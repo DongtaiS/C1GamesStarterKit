@@ -1,4 +1,5 @@
 import math
+import sys
 from .unit import GameUnit
 from .util import debug_write
 
@@ -44,6 +45,35 @@ class GameMap:
             return self.__map[x][y]
         self._invalid_coordinates(location)
 
+    def print_map(self):
+        for r in range(0, self.ARENA_SIZE):
+            row = ""
+            for c in range(0, self.ARENA_SIZE):
+                if not self.in_arena_bounds([c,r]):
+                    sys.stderr.write("  ")
+                else:
+                    units = self[c,r]
+                    sys.stderr.write(self.unitToString(units) + " ")
+            sys.stderr.write('\n')
+                
+    def unitToString(self, unitList):
+        if unitList is None or len(unitList) == 0:
+            return "."
+        
+        unit : GameUnit = unitList[0]
+        if unit.unit_type == "FF":
+            return "W" if unit.upgraded else "w"
+        elif unit.unit_type == "EF":
+            return "S" if unit.upgraded else "s"
+        elif unit.unit_type == "DF":
+            return "T" if unit.upgraded else "t"
+        if unit.unit_type == "PI":
+            return "c"
+        elif unit.unit_type == "EI":
+            return "d"
+        elif unit.unit_type == "SI":
+            return "i"
+                
     def __setitem__(self, location, val):
         if type(location) == tuple and len(location) == 2 and self.in_arena_bounds(location):
             self.__map[location[0]][location[1]] = val
