@@ -59,6 +59,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.starter_strategy(game_state)
 
         game_state.submit_turn()
+        
+        game_state.game_map.print_map()
 
 
     """
@@ -73,10 +75,16 @@ class AlgoStrategy(gamelib.AlgoCore):
         For offense we will use long range demolishers if they place stationary units near the enemy's front.
         If there are no stationary units to attack in the front, we will send Scouts to try and score quickly.
         """
+
+        if game_state.turn_number == 0:
+            self.initial_defense(game_state)
+        
         # First, place basic defenses
         self.build_defences(game_state)
         # Now build reactive defenses based on where the enemy scored
         self.build_reactive_defense(game_state)
+            
+            
 
         # If the turn is less than 5, stall with interceptors and wait to see enemy's base
         if game_state.turn_number < 5:
@@ -100,6 +108,23 @@ class AlgoStrategy(gamelib.AlgoCore):
                 # Lastly, if we have spare SP, let's build some supports
                 support_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
                 game_state.attempt_spawn(SUPPORT, support_locations)
+
+    def initial_defense(self, game_state):
+        #TODO: do testing to optimize these placements, play around with putting extra turrets in front or upgraded walls
+        main_turret_locations = [[3,12], [24,12], [10,12], [17,12]]
+        
+        game_state.attempt_spawn(TURRET, main_turret_locations)
+        game_state.attempt_upgrade(main_turret_locations)
+        
+        secondary_turret_locations = [[3,13], [24,13]]
+        
+        game_state.attempt_spawn(TURRET, secondary_turret_locations)
+        
+        extra_wall_location = [[10, 13] if random.randint(0,1) == 0 else [17,13]]
+        
+        game_state.attempt_spawn(WALL, extra_wall_location)
+        
+        
 
     def build_defences(self, game_state):
         """
