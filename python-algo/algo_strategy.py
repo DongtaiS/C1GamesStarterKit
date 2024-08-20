@@ -176,7 +176,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         # By asking attempt_spawn to spawn 1000 units, it will essentially spawn as many as we have resources for
         game_state.attempt_spawn(DEMOLISHER, [24, 10], 1000)
 
-    def least_damage_spawn_location(self, game_state, ):
+    def least_damage_spawn_location(self, game_state):
         """
         This function will help us guess which location is the safest to spawn moving units from.
         It gets the path the unit will take then checks locations on that path to 
@@ -185,9 +185,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         damages = []
         location_options = []
         for i in range(14):
-            location_options.append([i,13-i])
-            location_options.append([14+i,i])
-        
+            if game_state.can_spawn(SCOUT, [i,13-i]):
+                location_options.append([i,13-i])
+            if game_state.can_spawn(SCOUT, [14+i,i]):
+                location_options.append([14+i,i])
+
         for location in location_options:
             path = game_state.find_path_to_edge(location)
             damage = 0
@@ -202,6 +204,43 @@ class AlgoStrategy(gamelib.AlgoCore):
                 indices.append(i)
         import random
         return location_options[indices[random.randrange(0,indices.length)]]
+
+    def least_damage_spawn_location_simulation(self, game_state, num_scouts:int):
+        # 0 stores turret damage to scout, 1 stores scout damage to turret, 2 stores the starting location
+        path_dmg: list[tuple[int,int,list[int]]]= []
+        
+        location_options = []
+        # game_state.get_target(attacking_unit)
+        for i in range(14):
+            if game_state.can_spawn(SCOUT, [i,13-i]):
+                location_options.append([i,13-i])
+            if game_state.can_spawn(SCOUT, [14+i,i]):
+                location_options.append([14+i,i])
+        dead_scouts = 0
+        for location in location_options:
+            path = game_state.find_path_to_edge(location)
+            scout_damage_to_turret = 0
+            turret_damage_to_scout = 0
+            dead_attackers: set[list[int,int]] = {}
+            for path_location in path:
+                turret_damage_to_scout += len(game_state.get_attackers(path_location, 0, dead_attackers)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
+                target = game_state.get_target(gamelib.GameUnit(SCOUT, game_state.config))
+                if target and target.unit_type == gamelib.GameUnit(TURRET, game_state.config).unit_type:
+                    scout_damage_to_turret += min(target.health, gamelib.GameUnit(SCOUT, game_state.config).damage_f *num_scouts)
+                    if gamelib.GameUnit(SCOUT, game_state.config).damage_i * num_scouts >= target.health:
+                       dead_attackers.add((target.x,target.y)) 
+                if turret_damage_to_scout >= (dead_scouts+1):
+                    num_scouts -=1
+                    dead_scouts += 1
+            path_dmg.append((turret_damage_to_scout,scout_damage_to_turret,location))
+        # Python is a stable sort, so we sort by inc turret_damage_to_scout, and then dec scout_damage_to_turret
+        path_dmg = sorted(path_dmg, key = lambda x: x[1], reverse=True)
+        path_dmg = sorted(path_dmg, key = lambda x: x[0])
+        import random
+        return path_dmg[random.randrange(0,min(path_dmg.length,2))][2]
+        
+            
+            
 
     def detect_enemy_unit(self, game_state, unit_type=None, valid_x = None, valid_y = None):
         total_units = 0

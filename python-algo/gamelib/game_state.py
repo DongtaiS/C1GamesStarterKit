@@ -614,7 +614,7 @@ class GameState:
                     target_x_distance = unit_x_distance
         return target
 
-    def get_attackers(self, location, player_index):
+    def get_attackers(self, location, player_index, dead_attackers: set[tuple[int,int]] | None):
         """Gets the stationary units threatening a given location
 
         Args:
@@ -643,5 +643,6 @@ class GameState:
         for location_unit in possible_locations:
             for unit in self.game_map[location_unit]:
                 if unit.damage_i + unit.damage_f > 0 and unit.player_index != player_index and self.game_map.distance_between_locations(location, location_unit) <= unit.attackRange:
-                    attackers.append(unit)
+                    if dead_attackers is None or location_unit not in dead_attackers:
+                        attackers.append(unit)
         return attackers
