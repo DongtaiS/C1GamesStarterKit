@@ -643,6 +643,6 @@ class GameState:
         for location_unit in possible_locations:
             for unit in self.game_map[location_unit]:
                 if unit.damage_i + unit.damage_f > 0 and unit.player_index != player_index and self.game_map.distance_between_locations(location, location_unit) <= unit.attackRange:
-                    if dead_attackers is None or location_unit not in dead_attackers:
+                    if dead_attackers is None or (location_unit[0],location_unit[1]) not in dead_attackers:
                         attackers.append(unit)
         return attackers
