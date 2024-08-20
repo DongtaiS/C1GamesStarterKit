@@ -2,6 +2,7 @@ import gamelib
 import random
 import math
 import warnings
+import copy
 from sys import maxsize
 import json
 from gamelib import GameMap, GameState
@@ -74,8 +75,9 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         game_state.submit_turn()
         
-        gamelib.debug_write(self.parse_defenses(game_state))
-        game_state.game_map.print_map()
+        # gamelib.debug_write(self.parse_defenses(game_state))
+        if game_state.turn_number <= 8:
+            game_state.game_map.print_map()
 
 
     """
@@ -95,11 +97,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         if game_state.turn_number > 0:
             self.scout_attack_with_support(game_state)
         
-        defense = self.parse_defenses(game_state)
-        sector_to_upgrade = self.defense_heuristic(defense)
+        # defense = self.parse_defenses(game_state)
+        # sector_to_upgrade = self.defense_heuristic(defense)
         
         
-        self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
+        # self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
         
     
         
@@ -422,6 +424,121 @@ class AlgoStrategy(gamelib.AlgoCore):
         import random
         return location_options[indices[random.randrange(0,len(indices))]]
 
+
+    def full_sim(self, game_state : gamelib.GameState, num_scouts:int):
+        # Returns the location, and also the number of simulated scouts that make it through
+        # 0 stores num surviving scouts,
+        # 1 stores turret damage to scout, 
+        # 2 stores scout damage to turret, 
+        # 3 stores scout damage to walls, 
+        # 4 stores the starting location
+        path_dmg: list[tuple[int,int,list[int]]]= []
+        
+        location_options = []
+        # game_state.get_target(attacking_unit)
+        for i in range(14):
+            if game_state.can_spawn(SCOUT, [i,13-i]):
+                location_options.append([i,13-i])
+            if game_state.can_spawn(SCOUT, [14+i,i]):
+                location_options.append([14+i,i])
+                
+        
+        TEMP_SCOUT  = gamelib.GameUnit(SCOUT, game_state.config)
+        SCOUT_DAMAGE = TEMP_SCOUT.damage_f
+        SCOUT_HP = TEMP_SCOUT.max_health
+        
+        for location in location_options:
+            temp_state :gamelib.GameState = copy.deepcopy(game_state)
+            dead_scouts = 0
+            edge = temp_state.get_target_edge(location)
+            path = temp_state.find_path_to_edge(location)
+            scout_damage_to_turret = 0
+            scout_damage_to_wall = 0
+            turret_damage_to_scout = 0
+            dead_attackers: set[list[int,int]] = {}
+            
+            
+            path_index = 0
+            cur_hp = SCOUT_HP + 3 # hardcode + 3 for shield
+            
+            edge_locs = []
+            for i in range(4):
+                edge_locs.append(game_state.game_map.get_edge_locations(i))
+            
+            while path_index < len(path):
+                path_location = path[path_index]
+                attackers : list[gamelib.GameUnit] = temp_state.get_attackers(path_location, 0, dead_attackers)
+                
+                temp_state.game_map.add_unit(SCOUT, path_location)
+                
+                remaining_scouts_to_attack = num_scouts - dead_scouts
+                
+                while (remaining_scouts_to_attack > 0):
+                    target = temp_state.get_target(temp_state.game_map[path_location][0])
+                    if target:
+                        max_dmg = remaining_scouts_to_attack * SCOUT_DAMAGE
+                        if target.health <= max_dmg:
+                            if target.unit_type == TURRET:
+                                scout_damage_to_turret += target.health
+                            elif target.unit_type == WALL:
+                                scout_damage_to_wall += target.health
+                            
+                            temp_state.game_map.remove_unit([target.x, target.y])
+                            # after destroying a structure, recalculate the path
+                            path = temp_state.find_path_to_edge(path_location, edge)
+                            # gamelib.debug_write(str(path))
+                            path_index = 0
+                            
+                            remaining_scouts_to_attack -= math.ceil(target.health / SCOUT_DAMAGE)
+                        else:
+                            target.health -= max_dmg
+                            if target.unit_type == TURRET:
+                                scout_damage_to_turret += max_dmg
+                            elif target.unit_type == WALL:
+                                scout_damage_to_wall += max_dmg
+                            remaining_scouts_to_attack = 0
+                            break
+                    else: 
+                        break
+                
+                temp_state.game_map.remove_unit(path_location)
+                
+                
+                
+                # gamelib.debug_write(f"{location} path loc: {path_location} num attackers: {len(attackers)}")
+                
+                for attacker in attackers:
+                    if num_scouts == dead_scouts: 
+                        break
+                    turret_damage_to_scout += min(attacker.damage_i, cur_hp)
+                    cur_hp -= attacker.damage_i
+                    if cur_hp <= 0:
+                        dead_scouts += 1
+                        cur_hp = SCOUT_HP + 3
+                        # gamelib.debug_write("SCOUT DIED")
+                        
+                
+                path_index += 1
+            
+            survived = num_scouts-dead_scouts
+            if path[-1] not in edge_locs[edge]:
+                survived = 0
+            
+            path_dmg.append((survived, turret_damage_to_scout, scout_damage_to_turret, scout_damage_to_wall, location))
+        # Python is a stable sort, so we sort by num surviving scouts, then by scout damage to turrets, then by scout damage to walls
+        path_dmg = sorted(path_dmg, key = lambda x: x[3], reverse=True)
+        path_dmg = sorted(path_dmg, key = lambda x: x[2], reverse=True)
+        path_dmg = sorted(path_dmg, key = lambda x: x[0], reverse=True)
+        
+        
+        for thing in path_dmg:
+            gamelib.debug_write(f"location: {thing[4]} surviving: {thing[0]} damage to turret: {thing[2]}")
+        
+        import random
+        index = random.randrange(0,min(len(path_dmg),2)) # 0 or random
+        return (path_dmg[index][4], path_dmg[index][0]) #return location and num surviving
+
+
     def least_damage_spawn_location_simulation(self, game_state, num_scouts:int):
         # Returns the location, and also the number of simulated scouts that make it through
         # 0 stores turret damage to scout, 1 stores scout damage to turret, 2 stores the starting location
@@ -476,9 +593,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         DELTA: float = 2
         mobile_points = game_state.get_resource(MP)
         num_scouts = int(mobile_points)
-        scout_location,scouts_alive = self.least_damage_spawn_location_simulation(game_state, num_scouts)
-        if scouts_alive < DELTA:
+        scout_location,scouts_alive = self.full_sim(game_state, num_scouts)
+        gamelib.debug_write("BEST LOCATION: " + str(scout_location) + "NUM SURVIVE: " + str(scouts_alive) + " MP : " + str(mobile_points))
+        if scouts_alive <= num_scouts * 0.25 or mobile_points < 8:
             return
+        gamelib.debug_write("ATTEMPT SPAWN")
         game_state.attempt_spawn(SCOUT,scout_location,num_scouts)
         support_locations = game_state.game_map.get_locations_in_range(scout_location,3.5)        
         for location in support_locations:
