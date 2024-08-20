@@ -54,10 +54,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.start_points = [[3,12], [10,12], [17,12], [24,12]]
         
         # gamelib.debug_write(str(self.sectors))
-        # gamelib.debug_write(str(len(self.sectors[0])))
-        # gamelib.debug_write(str(len(self.sectors[1])))
-        # gamelib.debug_write(str(len(self.sectors[2])))
-        # gamelib.debug_write(str(len(self.sectors[3])))
         
 
     def on_turn(self, turn_state):
@@ -90,13 +86,20 @@ class AlgoStrategy(gamelib.AlgoCore):
     
 
     def main_strategy(self, game_state):
+        
+        
         if game_state.turn_number == 0:
             self.initial_defense(game_state)
+            
+            
+        if game_state.turn_number > 0:
+            self.scout_attack_with_support(game_state)
         
-        sector_to_upgrade = self.defense_heuristic(self.parse_defenses(game_state))
+        defense = self.parse_defenses(game_state)
+        sector_to_upgrade = self.defense_heuristic(defense)
         
         
-        self.improve_defense(game_state, sector_to_upgrade)
+        self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
         
     
         
@@ -115,14 +118,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.attempt_spawn(WALL, extra_wall_location)
     
     
-    def improve_defense(self, game_state: gamelib.GameState, sector):
+    def improve_defense(self, game_state: gamelib.GameState, sector, defense):
         
         
         start_point = self.start_points[sector]
-        gamelib.debug_write("SECTOR TO UPGRADE: " + str(sector) + " " + str(start_point))
-        
-        gamelib.debug_write(str(self.column_sequence(start_point[0])))
-        
+        gamelib.debug_write("SECTOR TO UPGRADE: " + str(sector) + " " + str(start_point))        
         
         loc_seq = self.upgrade_sequence(start_point)
         
@@ -131,9 +131,41 @@ class AlgoStrategy(gamelib.AlgoCore):
             self.try_upgrade(game_state, loc_seq[i])
             if game_state.get_resource(0) <= 1:
                 return
-        
         turret_seq = self.turret_sequence(start_point)
         
+        if defense[0][3] < 1: # if less than one upgraded turret, prioritize building a new one
+            if game_state.get_resource(0) >= 8:
+                self.try_build_upgraded_turret(game_state, turret_seq)
+            elif game_state.get_resource(0) >= 3:
+                self.try_build_turret(game_state, turret_seq)
+        
+        num_walls = defense[1][0] + defense[1][1]
+        num_turrets =  defense[1][2] + defense[1][3]
+        if (num_walls < num_turrets and num_walls < 6):
+            cols = self.column_sequence(start_point[0])
+            # with >= 4 SP try to build an upgraded wall
+            if game_state.get_resource(0) >= 4:
+                for i in range(len(cols)):
+                    loc = [cols[i], 13]
+                    if not game_state.contains_stationary_unit(loc):
+                        game_state.attempt_spawn(WALL, loc)
+                        game_state.attempt_upgrade(loc)
+                        if game_state.get_resource(0) < 4:
+                            break
+            
+            # with >= 2 SP try to build unupgraded wall
+            if game_state.get_resource(0) >= 2:
+                for i in range(len(cols)):
+                    loc = [cols[i], 13]
+                    if not game_state.contains_stationary_unit(loc):
+                        game_state.attempt_spawn(WALL, loc)
+                        if game_state.get_resource(0) < 2:
+                            break
+        
+        self.try_build_upgraded_turret(game_state, turret_seq)
+        self.try_build_turret(game_state, turret_seq)
+        
+    def try_build_upgraded_turret(self, game_state, turret_seq):
         # with >= 8 SP, try to build as many upgraded turrets as possible
         if game_state.get_resource(0) >= 8:
             for i in range(len(turret_seq)):
@@ -142,37 +174,17 @@ class AlgoStrategy(gamelib.AlgoCore):
                     game_state.attempt_spawn(TURRET, loc)
                     game_state.attempt_upgrade(loc)
                     if game_state.get_resource(0) < 8:
-                        break
-        
-        
-        cols = self.column_sequence(start_point[0])
-        # with >= 4 SP try to build an upgraded wall
-        if game_state.get_resource(0) >= 4:
-            for i in range(len(cols)):
-                loc = [cols[i], 13]
-                if not game_state.contains_stationary_unit(loc):
-                    game_state.attempt_spawn(WALL, loc)
-                    game_state.attempt_upgrade(loc)
-                    if game_state.get_resource(0) < 4:
-                        break
-        
+                        return
+    
+    def try_build_turret(self, game_state, turret_seq): 
         # with >= 3 SP try to build unupgraded turret
         if game_state.get_resource(0) >= 3:
-            for i in range(len(loc_seq)):
+            for i in range(len(turret_seq)):
                 loc = turret_seq[i]
                 if not game_state.contains_stationary_unit(loc):
                     game_state.attempt_spawn(TURRET, loc)
                     if game_state.get_resource(0) < 4:
-                        break
-        
-        # with >= 2 SP try to build unupgraded wall
-        if game_state.get_resource(0) >= 2:
-           for i in range(len(cols)):
-                loc = [cols[i], 13]
-                if not game_state.contains_stationary_unit(loc):
-                    game_state.attempt_spawn(WALL, loc)
-                    if game_state.get_resource(0) < 2:
-                        break
+                        return
         
     def try_upgrade(self, game_state: gamelib.GameState, location):
         if game_state.contains_stationary_unit(location):
@@ -191,11 +203,15 @@ class AlgoStrategy(gamelib.AlgoCore):
         res = [start]
         left = (start // 7) * 7
         right = (start // 7 + 1) * 7
+        if start < 14:
+            left = left + 1
+        else:
+            right = right - 1
         for i in range(1, 7):
             inc = i if start < 14 else -i
-            if (start + inc < right):
+            if (start + inc < right and start + inc >= left):
                 res.append(start + inc)
-            if (start - inc >= left):
+            if (start - inc >= left and start - inc < right):
                 res.append(start - inc)
         return res
     
@@ -235,12 +251,17 @@ class AlgoStrategy(gamelib.AlgoCore):
         return res
     
     def parse_defenses(self, game_state: gamelib.GameState):
-        results = []
+        results = [[],[],[],[]]
         for i in range(4):
             num_wall = 0
             num_wallPlus = 0
             num_turret = 0
             num_turretPlus = 0
+            
+            weight_wall = 0
+            weight_wallPlus = 0
+            weight_turret = 0
+            weight_turretPlus = 0
             for j in range(len(self.sectors[i])):
                 if game_state.contains_stationary_unit(self.sectors[i][j]):
                     unit: gamelib.GameUnit = game_state.contains_stationary_unit(self.sectors[i][j])
@@ -248,19 +269,24 @@ class AlgoStrategy(gamelib.AlgoCore):
                     
                     if unit.unit_type == WALL:
                         if unit.upgraded:
-                            num_wallPlus += weight
+                            num_wallPlus += 1
+                            weight_wallPlus += weight
                         else:
                             num_wall += weight
+                            weight_wall += weight
                             
                     #skip support when parsing our own defense, it doesn't really matter
                     
                     if unit.unit_type == TURRET:
                         if unit.upgraded:
-                            num_turretPlus += weight
+                            num_turretPlus += 1
+                            weight_turretPlus += weight
                         else:
-                            num_turret += weight
+                            num_turret += 1
+                            weight_turret += weight
             
-            results.append([num_wall, num_wallPlus, num_turret, num_turretPlus])
+            results[i].append([weight_wall, weight_wallPlus, weight_turret, weight_turretPlus])
+            results[i].append([num_wall, num_wallPlus, num_turret, num_turretPlus])
             
         return results
                 
@@ -270,9 +296,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         for i in range(4):
             #TODO: make a better heuristic, this weighs turret+ at 14 "points", turret- at 6, wall+ at 3, wall- at 1
             # then we select the sector that has the lowest # of points
-            value = defenses[i][3] * 14 + defenses[i][2] * 6 + defenses[i][1] * 3 + defenses[i][0]    
+            value = defenses[i][0][3] * 14 + defenses[i][0][2] * 6 + defenses[i][0][1] * 3 + defenses[i][0][0]    
             if value < minVal:
-                gamelib.debug_write("OLD MIN VAL: " + str(minVal) + " NEW MINVAL: " + str(value) + " i: " + str(i))
                 minVal = value
                 res = i
         
