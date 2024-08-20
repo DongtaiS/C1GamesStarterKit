@@ -1,26 +1,25 @@
-
 <!DOCTYPE html>
 
-<html>
+<html lang="en" data-content_root="./">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
     <title>gamelib &#8212; C1 Terminal Python Starterkit 1 documentation</title>
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <script src="_static/documentation_options.js?v=29a6c3e3"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="gamelib package" href="gamelib.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -32,18 +31,86 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="gamelib">
-<h1>gamelib<a class="headerlink" href="#gamelib" title="Permalink to this headline">¶</a></h1>
+  <section id="gamelib">
+<h1>gamelib<a class="headerlink" href="#gamelib" title="Link to this heading">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="gamelib.html">gamelib package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib">Module Overview (Start Here)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.algocore">Algo Core (gamelib.algocore)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.game_map">Game Map (gamelib.game_map)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.game_state">Game State (gamelib.game_state)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.navigation">Navigation (gamelib.navigation)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.unit">Game Unit  (gamelib.unit)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.util">Util  (gamelib.util)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.algocore">Algo Core (gamelib.algocore)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.algocore.AlgoCore"><code class="docutils literal notranslate"><span class="pre">AlgoCore</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.algocore.AlgoCore.on_action_frame"><code class="docutils literal notranslate"><span class="pre">AlgoCore.on_action_frame()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.algocore.AlgoCore.on_game_start"><code class="docutils literal notranslate"><span class="pre">AlgoCore.on_game_start()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.algocore.AlgoCore.on_turn"><code class="docutils literal notranslate"><span class="pre">AlgoCore.on_turn()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.algocore.AlgoCore.start"><code class="docutils literal notranslate"><span class="pre">AlgoCore.start()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.game_map">Game Map (gamelib.game_map)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap"><code class="docutils literal notranslate"><span class="pre">GameMap</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.add_unit"><code class="docutils literal notranslate"><span class="pre">GameMap.add_unit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.distance_between_locations"><code class="docutils literal notranslate"><span class="pre">GameMap.distance_between_locations()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.get_edge_locations"><code class="docutils literal notranslate"><span class="pre">GameMap.get_edge_locations()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.get_edges"><code class="docutils literal notranslate"><span class="pre">GameMap.get_edges()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.get_locations_in_range"><code class="docutils literal notranslate"><span class="pre">GameMap.get_locations_in_range()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.in_arena_bounds"><code class="docutils literal notranslate"><span class="pre">GameMap.in_arena_bounds()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.print_map"><code class="docutils literal notranslate"><span class="pre">GameMap.print_map()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.remove_unit"><code class="docutils literal notranslate"><span class="pre">GameMap.remove_unit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.unitToString"><code class="docutils literal notranslate"><span class="pre">GameMap.unitToString()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_map.GameMap.warn"><code class="docutils literal notranslate"><span class="pre">GameMap.warn()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.game_state">Game State (gamelib.game_state)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState"><code class="docutils literal notranslate"><span class="pre">GameState</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.attempt_remove"><code class="docutils literal notranslate"><span class="pre">GameState.attempt_remove()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.attempt_spawn"><code class="docutils literal notranslate"><span class="pre">GameState.attempt_spawn()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.attempt_upgrade"><code class="docutils literal notranslate"><span class="pre">GameState.attempt_upgrade()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.can_spawn"><code class="docutils literal notranslate"><span class="pre">GameState.can_spawn()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.contains_stationary_unit"><code class="docutils literal notranslate"><span class="pre">GameState.contains_stationary_unit()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.find_path_to_edge"><code class="docutils literal notranslate"><span class="pre">GameState.find_path_to_edge()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.get_attackers"><code class="docutils literal notranslate"><span class="pre">GameState.get_attackers()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.get_resource"><code class="docutils literal notranslate"><span class="pre">GameState.get_resource()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.get_resources"><code class="docutils literal notranslate"><span class="pre">GameState.get_resources()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.get_target"><code class="docutils literal notranslate"><span class="pre">GameState.get_target()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.get_target_edge"><code class="docutils literal notranslate"><span class="pre">GameState.get_target_edge()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.number_affordable"><code class="docutils literal notranslate"><span class="pre">GameState.number_affordable()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.project_future_MP"><code class="docutils literal notranslate"><span class="pre">GameState.project_future_MP()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.submit_turn"><code class="docutils literal notranslate"><span class="pre">GameState.submit_turn()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.suppress_warnings"><code class="docutils literal notranslate"><span class="pre">GameState.suppress_warnings()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.type_cost"><code class="docutils literal notranslate"><span class="pre">GameState.type_cost()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.game_state.GameState.warn"><code class="docutils literal notranslate"><span class="pre">GameState.warn()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.game_state.is_stationary"><code class="docutils literal notranslate"><span class="pre">is_stationary()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.navigation">Navigation (gamelib.navigation)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.navigation.Node"><code class="docutils literal notranslate"><span class="pre">Node</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.navigation.ShortestPathFinder"><code class="docutils literal notranslate"><span class="pre">ShortestPathFinder</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.navigation.ShortestPathFinder.initialize_map"><code class="docutils literal notranslate"><span class="pre">ShortestPathFinder.initialize_map()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.navigation.ShortestPathFinder.navigate_multiple_endpoints"><code class="docutils literal notranslate"><span class="pre">ShortestPathFinder.navigate_multiple_endpoints()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.navigation.ShortestPathFinder.print_map"><code class="docutils literal notranslate"><span class="pre">ShortestPathFinder.print_map()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.unit">Game Unit  (gamelib.unit)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.unit.GameUnit"><code class="docutils literal notranslate"><span class="pre">GameUnit</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="gamelib.html#gamelib.unit.GameUnit.upgrade"><code class="docutils literal notranslate"><span class="pre">GameUnit.upgrade()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.unit.is_stationary"><code class="docutils literal notranslate"><span class="pre">is_stationary()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gamelib.html#module-gamelib.util">Util  (gamelib.util)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.util.debug_write"><code class="docutils literal notranslate"><span class="pre">debug_write()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.util.get_command"><code class="docutils literal notranslate"><span class="pre">get_command()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="gamelib.html#gamelib.util.send_command"><code class="docutils literal notranslate"><span class="pre">send_command()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -51,14 +118,14 @@
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 </ul>
-</div>
+</section>
 
 
           </div>
           
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
 <h1 class="logo"><a href="#">C1 Terminal Python Starterkit</a></h1>
 
@@ -82,16 +149,16 @@
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
-<script>$('#searchbox').show(0);</script>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -105,11 +172,11 @@
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2019, Correlation One.
+      &#169;2019, Correlation One.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.4.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
       
       |
       <a href="_sources/index.rst.txt"
