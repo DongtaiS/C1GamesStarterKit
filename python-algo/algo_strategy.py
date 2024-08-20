@@ -95,14 +95,16 @@ class AlgoStrategy(gamelib.AlgoCore):
             
             
         if game_state.turn_number > 0:
-            self.scout_attack_with_support(game_state)
+            should_attack, location, num_scouts = self.should_attack(game_state)
+            if should_attack:
+                self.scout_attack(game_state, location, num_scouts)
         
-        # defense = self.parse_defenses(game_state)
-        # sector_to_upgrade = self.defense_heuristic(defense)
+        defense = self.parse_defenses(game_state)
+        sector_to_upgrade = self.defense_heuristic(defense)
         
         
-        # self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
-        
+        self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
+    
     
         
     def initial_defense(self, game_state):
@@ -111,13 +113,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.attempt_spawn(TURRET, self.start_points)
         game_state.attempt_upgrade(self.start_points)
         
-        secondary_turret_locations = [[3,13], [24,13]]
+        wall_locations = [[4,13], [10,13], [17,13], [24,13]]
         
-        game_state.attempt_spawn(TURRET, secondary_turret_locations)
-        
-        extra_wall_location = [[10, 13] if random.randint(0,1) == 0 else [17,13]]
-        
-        game_state.attempt_spawn(WALL, extra_wall_location)
+        game_state.attempt_spawn(WALL, wall_locations)
     
     
     def improve_defense(self, game_state: gamelib.GameState, sector, defense):
@@ -135,7 +133,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 return
         turret_seq = self.turret_sequence(start_point)
         
-        if defense[0][3] < 1: # if less than one upgraded turret, prioritize building a new one
+        if defense[0][3] < 1 or game_state.get_resource(0) >= 8: # if less than one upgraded turret, prioritize building a new one
             if game_state.get_resource(0) >= 8:
                 self.try_build_upgraded_turret(game_state, turret_seq)
             elif game_state.get_resource(0) >= 3:
@@ -143,8 +141,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         
         num_walls = defense[1][0] + defense[1][1]
         num_turrets =  defense[1][2] + defense[1][3]
-        if (num_walls < num_turrets and num_walls < 6):
-            cols = self.column_sequence(start_point[0])
+        
+        cols = self.column_sequence(start_point[0])
+        if (num_walls < 1):
             # with >= 4 SP try to build an upgraded wall
             if game_state.get_resource(0) >= 4:
                 for i in range(len(cols)):
@@ -154,18 +153,18 @@ class AlgoStrategy(gamelib.AlgoCore):
                         game_state.attempt_upgrade(loc)
                         if game_state.get_resource(0) < 4:
                             break
-            
-            # with >= 2 SP try to build unupgraded wall
-            if game_state.get_resource(0) >= 2:
-                for i in range(len(cols)):
-                    loc = [cols[i], 13]
-                    if not game_state.contains_stationary_unit(loc):
-                        game_state.attempt_spawn(WALL, loc)
-                        if game_state.get_resource(0) < 2:
-                            break
         
         self.try_build_upgraded_turret(game_state, turret_seq)
         self.try_build_turret(game_state, turret_seq)
+        
+        # with >= 2 SP try to build unupgraded wall
+        if game_state.get_resource(0) >= 2:
+            for i in range(len(cols)):
+                loc = [cols[i], 13]
+                if not game_state.contains_stationary_unit(loc):
+                    game_state.attempt_spawn(WALL, loc)
+                    if game_state.get_resource(0) < 2:
+                        break
         
     def try_build_upgraded_turret(self, game_state, turret_seq):
         # with >= 8 SP, try to build as many upgraded turrets as possible
@@ -432,6 +431,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         # 2 stores scout damage to turret, 
         # 3 stores scout damage to walls, 
         # 4 stores the starting location
+        # 5 stores end location
         path_dmg: list[tuple[int,int,list[int]]]= []
         
         location_options = []
@@ -524,7 +524,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             if path[-1] not in edge_locs[edge]:
                 survived = 0
             
-            path_dmg.append((survived, turret_damage_to_scout, scout_damage_to_turret, scout_damage_to_wall, location))
+            path_dmg.append((survived, turret_damage_to_scout, scout_damage_to_turret, scout_damage_to_wall, location, path[-1]))
         # Python is a stable sort, so we sort by num surviving scouts, then by scout damage to turrets, then by scout damage to walls
         path_dmg = sorted(path_dmg, key = lambda x: x[3], reverse=True)
         path_dmg = sorted(path_dmg, key = lambda x: x[2], reverse=True)
@@ -536,6 +536,12 @@ class AlgoStrategy(gamelib.AlgoCore):
         
         import random
         index = random.randrange(0,min(len(path_dmg),2)) # 0 or random
+        
+        best = path_dmg[0]
+        for i in range(1,8):
+            if random.randint(0,1) == 0 and game_state.game_map.distance_between_locations(path_dmg[i][5], best[5]) > 9 and best[0] - path_dmg[i][0] < math.ceil(num_scouts*0.2):
+                return (path_dmg[i][4], path_dmg[i][0])
+        
         return (path_dmg[index][4], path_dmg[index][0]) #return location and num surviving
 
 
@@ -589,15 +595,21 @@ class AlgoStrategy(gamelib.AlgoCore):
             return True
         return False
 
-    def scout_attack_with_support(self, game_state: GameState):
+    def should_attack(self, game_state: GameState):
         DELTA: float = 2
         mobile_points = game_state.get_resource(MP)
         num_scouts = int(mobile_points)
         scout_location,scouts_alive = self.full_sim(game_state, num_scouts)
         gamelib.debug_write("BEST LOCATION: " + str(scout_location) + "NUM SURVIVE: " + str(scouts_alive) + " MP : " + str(mobile_points))
-        if scouts_alive <= num_scouts * 0.25 or mobile_points < 8:
-            return
-        gamelib.debug_write("ATTEMPT SPAWN")
+        
+        
+        
+        if mobile_points < 20 and (scouts_alive <= num_scouts * 0.8 or mobile_points < 8):
+            return False, [], 0
+        
+        return True, scout_location, num_scouts
+        
+    def scout_attack(self, game_state, scout_location, num_scouts):
         game_state.attempt_spawn(SCOUT,scout_location,num_scouts)
         support_locations = game_state.game_map.get_locations_in_range(scout_location,3.5)        
         for location in support_locations:
