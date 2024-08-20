@@ -4,7 +4,7 @@ import math
 import warnings
 from sys import maxsize
 import json
-
+from gamelib import GameMap, GameState
 
 """
 Most of the algo code you write will be in this file unless you create new
@@ -53,7 +53,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         game engine.
         """
         game_state = gamelib.GameState(self.config, turn_state)
-        game_state.attempt_spawn(DEMOLISHER, [24, 10], 3)
         gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
 
@@ -75,32 +74,12 @@ class AlgoStrategy(gamelib.AlgoCore):
         If there are no stationary units to attack in the front, we will send Scouts to try and score quickly.
         """
         # First, place basic defenses
-        self.build_defences(game_state)
+        # self.build_defences(game_state)
         # Now build reactive defenses based on where the enemy scored
-        self.build_reactive_defense(game_state)
-
-        # If the turn is less than 5, stall with interceptors and wait to see enemy's base
-        if game_state.turn_number < 5:
-            self.stall_with_interceptors(game_state)
-        else:
-            # Now let's analyze the enemy base to see where their defenses are concentrated.
-            # If they have many units in the front we can build a line for our demolishers to attack them at long range.
-            if self.detect_enemy_unit(game_state, unit_type=None, valid_x=None, valid_y=[14, 15]) > 10:
-                self.demolisher_line_strategy(game_state)
-            else:
-                # They don't have many units in the front so lets figure out their least defended area and send Scouts there.
-
-                # Only spawn Scouts every other turn
-                # Sending more at once is better since attacks can only hit a single scout at a time
-                if game_state.turn_number % 2 == 1:
-                    # To simplify we will just check sending them from back left and right
-                    scout_spawn_location_options = [[13, 0], [14, 0]]
-                    best_location = self.least_damage_spawn_location_simulation(game_state)
-                    game_state.attempt_spawn(SCOUT, best_location, 1000)
-
-                # Lastly, if we have spare SP, let's build some supports
-                support_locations = [[13, 2], [14, 2], [13, 3], [14, 3]]
-                game_state.attempt_spawn(SUPPORT, support_locations)
+        # self.build_reactive_defense(game_state)
+        if game_state.turn_number > 0:
+            self.scout_attack_with_support(game_state)
+                
 
     def build_defences(self, game_state):
         """
@@ -195,7 +174,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             path = game_state.find_path_to_edge(location)
             damage = 0
             for path_location in path:
-                damage += len(game_state.get_attackers(path_location, 0, None)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
+                damage += len(game_state.get_attackers(path_location, 0)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
             damages.append(damage)
         
         min_damage = min(damages)
@@ -207,6 +186,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         return location_options[indices[random.randrange(0,len(indices))]]
 
     def least_damage_spawn_location_simulation(self, game_state, num_scouts:int):
+        # Returns the location, and also the number of simulated scouts that make it through
         # 0 stores turret damage to scout, 1 stores scout damage to turret, 2 stores the starting location
         path_dmg: list[tuple[int,int,list[int]]]= []
         
@@ -235,19 +215,39 @@ class AlgoStrategy(gamelib.AlgoCore):
                 if turret_damage_to_scout >= (dead_scouts+1):
                     num_scouts -=1
                     dead_scouts += 1
-            path_dmg.append((turret_damage_to_scout,scout_damage_to_turret,location))
+            path_dmg.append((turret_damage_to_scout,scout_damage_to_turret,location,num_scouts))
         # Python is a stable sort, so we sort by inc turret_damage_to_scout, and then dec scout_damage_to_turret
         path_dmg = sorted(path_dmg, key = lambda x: x[1], reverse=True)
         path_dmg = sorted(path_dmg, key = lambda x: x[0])
         import random
-        return path_dmg[random.randrange(0,min(path_dmg.length,2))][2]
+        index = random.randrange(0,min(len(path_dmg),2)) # 0 or random
+        return (path_dmg[index][2],path[index][3])
 
-    def attack_this_round(self, game_state) -> bool:
+    def attack_this_round_mp(self, game_state) -> bool:
         DELTA: float = 2
-        return game_state.project_future_MP() - game_state.get_resource(1) < DELTA
+        return game_state.project_future_MP() - game_state.get_resource(MP) < DELTA
             
-            
+    def buy_sell_support(self, game_state, location) -> bool:
+        "Checks to see if we can spawn a support for an attack"
+        if game_state.can_spawn(SUPPORT,location):
+            game_state.attempt_spawn(SUPPORT,location)
+            game_state.attempt_remove(location)
+            return True
+        return False
 
+    def scout_attack_with_support(self, game_state: GameState):
+        DELTA: float = 2
+        mobile_points = game_state.get_resource(MP)
+        num_scouts = int(mobile_points)
+        scout_location,scouts_alive = self.least_damage_spawn_location_simulation(game_state, num_scouts)
+        if scouts_alive < DELTA:
+            return
+        game_state.attempt_spawn(SCOUT,scout_location,num_scouts)
+        support_locations = game_state.game_map.get_locations_in_range(scout_location,3.5)        
+        for location in support_locations:
+            if self.buy_sell_support(game_state,location):
+                break
+        
     def detect_enemy_unit(self, game_state, unit_type=None, valid_x = None, valid_y = None):
         total_units = 0
         for location in game_state.game_map:
