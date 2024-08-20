@@ -94,7 +94,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 if game_state.turn_number % 2 == 1:
                     # To simplify we will just check sending them from back left and right
                     scout_spawn_location_options = [[13, 0], [14, 0]]
-                    best_location = self.least_damage_spawn_location(game_state, scout_spawn_location_options)
+                    best_location = self.least_damage_spawn_location(game_state)
                     game_state.attempt_spawn(SCOUT, best_location, 1000)
 
                 # Lastly, if we have spare SP, let's build some supports
@@ -194,7 +194,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             path = game_state.find_path_to_edge(location)
             damage = 0
             for path_location in path:
-                damage += len(game_state.get_attackers(path_location, 0)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
+                damage += len(game_state.get_attackers(path_location, 0, None)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
             damages.append(damage)
         
         min_damage = min(damages)
@@ -203,7 +203,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             if damage == min_damage:
                 indices.append(i)
         import random
-        return location_options[indices[random.randrange(0,indices.length)]]
+        return location_options[indices[random.randrange(0,len(indices))]]
 
     def least_damage_spawn_location_simulation(self, game_state, num_scouts:int):
         # 0 stores turret damage to scout, 1 stores scout damage to turret, 2 stores the starting location
@@ -228,7 +228,9 @@ class AlgoStrategy(gamelib.AlgoCore):
                 if target and target.unit_type == gamelib.GameUnit(TURRET, game_state.config).unit_type:
                     scout_damage_to_turret += min(target.health, gamelib.GameUnit(SCOUT, game_state.config).damage_f *num_scouts)
                     if gamelib.GameUnit(SCOUT, game_state.config).damage_i * num_scouts >= target.health:
-                       dead_attackers.add((target.x,target.y)) 
+                       dead_attackers.add((target.x,target.y))
+                elif target and target.unit_type == gamelib.GameUnit(WALL,game_state.config):
+                    scout_damage_to_wall += min(target.health,)
                 if turret_damage_to_scout >= (dead_scouts+1):
                     num_scouts -=1
                     dead_scouts += 1
@@ -238,7 +240,10 @@ class AlgoStrategy(gamelib.AlgoCore):
         path_dmg = sorted(path_dmg, key = lambda x: x[0])
         import random
         return path_dmg[random.randrange(0,min(path_dmg.length,2))][2]
-        
+
+    def attack_this_round(self, game_state) -> bool:
+        DELTA: float = 2
+        return game_state.project_future_MP() - game_state.get_resource(1) < DELTA
             
             
 
