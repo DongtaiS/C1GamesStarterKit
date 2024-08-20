@@ -89,7 +89,7 @@ class GameState:
         MP = self.MP
         SP = self.SP
 
-        self.game_map = GameMap(self.config)
+        self.game_map: GameMap = GameMap(self.config)
         self._shortest_path_finder = ShortestPathFinder()
         self._build_stack = []
         self._deploy_stack = []
@@ -614,7 +614,7 @@ class GameState:
                     target_x_distance = unit_x_distance
         return target
 
-    def get_attackers(self, location, player_index, dead_attackers: set[tuple[int,int]] | None):
+    def get_attackers(self, location, player_index, dead_attackers: set[tuple[int,int]] | None = None):
         """Gets the stationary units threatening a given location
 
         Args:
@@ -646,3 +646,29 @@ class GameState:
                     if dead_attackers is None or (location_unit[0],location_unit[1]) not in dead_attackers:
                         attackers.append(unit)
         return attackers
+
+    def get_attack_damage_at_location(self, location, player_index, dead_attackers: set[tuple[int,int]] | None = None):
+        if not player_index == 0 and not player_index == 1:
+            self._invalid_player_index(player_index)
+        if not self.game_map.in_arena_bounds(location):
+            self.warn("Location {} is not in the arena bounds.".format(location))
+
+        attackers = []
+        """
+        Get locations in the range of TURRET units
+        """
+        max_range = 0
+        for unit in self.config["unitInformation"]:
+            if unit.get('attackRange', 0) >= max_range:
+                max_range = unit.get('attackRange', 0)
+        possible_locations= self.game_map.get_locations_in_range(location, max_range)
+        for location_unit in possible_locations:
+            for unit in self.game_map[location_unit]:
+                if unit.damage_i + unit.damage_f > 0 and unit.player_index != player_index and self.game_map.distance_between_locations(location, location_unit) <= unit.attackRange:
+                    if dead_attackers is None or (location_unit[0],location_unit[1]) not in dead_attackers:
+                        attackers.append(unit)
+        dmg = 0
+        for attacker in attackers:
+            dmg += attacker.damage_i
+            
+        return dmg

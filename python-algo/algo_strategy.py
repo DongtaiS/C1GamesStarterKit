@@ -4,8 +4,8 @@ import math
 import warnings
 from sys import maxsize
 import json
-from gamelib import GameMap, GameState
-
+from gamelib import GameMap, GameState, GameUnit
+from collections import defaultdict
 """
 Most of the algo code you write will be in this file unless you create new
 modules yourself. Start by modifying the 'on_turn' function.
@@ -78,7 +78,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Now build reactive defenses based on where the enemy scored
         # self.build_reactive_defense(game_state)
         if game_state.turn_number > 0:
-            self.scout_attack_with_support(game_state)
+            if self.attack_this_round_mp(game_state):
+                self.scout_attack_with_support(game_state)
                 
 
     def build_defences(self, game_state):
@@ -185,7 +186,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         import random
         return location_options[indices[random.randrange(0,len(indices))]]
 
-    def least_damage_spawn_location_simulation(self, game_state, num_scouts:int):
+    def least_damage_spawn_location_simulation(self, game_state, max_scouts:int):
         # Returns the location, and also the number of simulated scouts that make it through
         # 0 stores turret damage to scout, 1 stores scout damage to turret, 2 stores the starting location
         path_dmg: list[tuple[int,int,list[int]]]= []
@@ -198,33 +199,43 @@ class AlgoStrategy(gamelib.AlgoCore):
             if game_state.can_spawn(SCOUT, [14+i,i]):
                 location_options.append([14+i,i])
         dead_scouts = 0
+
+        # UPGRADED TURRETS
         for location in location_options:
             path = game_state.find_path_to_edge(location)
-            scout_damage_to_turret = 0
             turret_damage_to_scout = 0
-            dead_attackers: set[list[int,int]] = {}
+            scout_damage_to_wall = 0
+            dead_attackers: set[tuple[int,int]] = set()
+            num_scouts = max_scouts
+            scout_damage_to_turret =  [[0 for x in range(30)] for y in range(30)] # location of turret, and how much damage to turret at that location
             for path_location in path:
-                turret_damage_to_scout += len(game_state.get_attackers(path_location, 0, dead_attackers)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
-                target = game_state.get_target(gamelib.GameUnit(SCOUT, game_state.config))
-                if target and target.unit_type == gamelib.GameUnit(TURRET, game_state.config).unit_type:
-                    scout_damage_to_turret += min(target.health, gamelib.GameUnit(SCOUT, game_state.config).damage_f *num_scouts)
-                    if gamelib.GameUnit(SCOUT, game_state.config).damage_i * num_scouts >= target.health:
-                       dead_attackers.add((target.x,target.y))
-                elif target and target.unit_type == gamelib.GameUnit(WALL,game_state.config):
-                    scout_damage_to_wall += min(target.health,)
-                if turret_damage_to_scout >= (dead_scouts+1):
+                turret_damage_to_scout += game_state.get_attack_damage_at_location(path_location, 0, dead_attackers)
+                scout = GameUnit(SCOUT, game_state.config, x = path_location[0], y = path_location[1])
+                target = game_state.get_target(scout)
+                if target and target.unit_type == GameUnit(TURRET, game_state.config).unit_type:
+                    scout_damage_to_turret[target.x][target.y] += scout.damage_f *num_scouts
+                    if scout_damage_to_turret[target.x][target.y] >= target.health:
+                        dead_attackers.add((target.x,target.y))
+                elif target and target.unit_type == GameUnit(WALL,game_state.config):
+                    scout_damage_to_wall += min(target.health, scout.damage_f *num_scouts)
+                
+                while turret_damage_to_scout >= (dead_scouts+1) * GameUnit(SCOUT, game_state.config).health and num_scouts>=1:
                     num_scouts -=1
                     dead_scouts += 1
-            path_dmg.append((turret_damage_to_scout,scout_damage_to_turret,location,num_scouts))
+            cum_scout_damage_to_turret = sum(element for row in scout_damage_to_turret for element in row)
+            path_dmg.append((turret_damage_to_scout,cum_scout_damage_to_turret,scout_damage_to_wall,num_scouts,location))
+
         # Python is a stable sort, so we sort by inc turret_damage_to_scout, and then dec scout_damage_to_turret
-        path_dmg = sorted(path_dmg, key = lambda x: x[1], reverse=True)
-        path_dmg = sorted(path_dmg, key = lambda x: x[0])
+        path_dmg = sorted(path_dmg, key = lambda x: x[2], reverse=True) # dec scout damage to wals
+        path_dmg = sorted(path_dmg, key = lambda x: x[1], reverse=True) # dec scout damage to turret
+        path_dmg = sorted(path_dmg, key = lambda x: x[0]) # inc turret damage to scout
+        path_dmg = sorted(path_dmg, key = lambda x: x[3], reverse = True) # dec order of number of scouts that make it
         import random
-        index = random.randrange(0,min(len(path_dmg),2)) # 0 or random
-        return (path_dmg[index][2],path_dmg[index][3])
+        index =0
+        return (path_dmg[index][-1],path_dmg[index][-2])
 
     def attack_this_round_mp(self, game_state) -> bool:
-        DELTA: float = 2
+        DELTA: float = 2.5
         return game_state.project_future_MP() - game_state.get_resource(MP) < DELTA
             
     def buy_sell_support(self, game_state, location) -> bool:
@@ -242,10 +253,10 @@ class AlgoStrategy(gamelib.AlgoCore):
         scout_location,scouts_alive = self.least_damage_spawn_location_simulation(game_state, num_scouts)
         if scouts_alive < DELTA:
             return
-        game_state.attempt_spawn(SCOUT,scout_location,num_scouts)
-        support_locations = game_state.game_map.get_locations_in_range(scout_location,3.5)        
+        support_locations = game_state.game_map.get_locations_in_range(scout_location,1)    
         for location in support_locations:
-            if self.buy_sell_support(game_state,location):
+            if location!=scout_location and self.buy_sell_support(game_state,location):
+                game_state.attempt_spawn(SCOUT,scout_location,num_scouts)
                 break
         
     def detect_enemy_unit(self, game_state, unit_type=None, valid_x = None, valid_y = None):
@@ -280,10 +291,10 @@ class AlgoStrategy(gamelib.AlgoCore):
             unit_owner_self = True if breach[4] == 1 else False
             # When parsing the frame data directly, 
             # 1 is integer for yourself, 2 is opponent (StarterKit code uses 0, 1 as player_index instead)
-            if not unit_owner_self:
-                gamelib.debug_write("Got scored on at: {}".format(location))
-                self.scored_on_locations.append(location)
-                gamelib.debug_write("All locations: {}".format(self.scored_on_locations))
+            # if not unit_owner_self:
+                # gamelib.debug_write("Got scored on at: {}".format(location))
+                # self.scored_on_locations.append(location)
+                # gamelib.debug_write("All locations: {}".format(self.scored_on_locations))
 
 
 if __name__ == "__main__":
