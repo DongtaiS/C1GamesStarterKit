@@ -221,7 +221,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         path_dmg = sorted(path_dmg, key = lambda x: x[0])
         import random
         index = random.randrange(0,min(len(path_dmg),2)) # 0 or random
-        return (path_dmg[index][2],path[index][3])
+        return (path_dmg[index][2],path_dmg[index][3])
 
     def attack_this_round_mp(self, game_state) -> bool:
         DELTA: float = 2
