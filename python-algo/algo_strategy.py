@@ -53,6 +53,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         game engine.
         """
         game_state = gamelib.GameState(self.config, turn_state)
+        game_state.attempt_spawn(DEMOLISHER, [24, 10], 3)
         gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
 
@@ -94,7 +95,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 if game_state.turn_number % 2 == 1:
                     # To simplify we will just check sending them from back left and right
                     scout_spawn_location_options = [[13, 0], [14, 0]]
-                    best_location = self.least_damage_spawn_location(game_state)
+                    best_location = self.least_damage_spawn_location_simulation(game_state)
                     game_state.attempt_spawn(SCOUT, best_location, 1000)
 
                 # Lastly, if we have spare SP, let's build some supports
