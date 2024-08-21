@@ -19,6 +19,7 @@ Advanced strategy tips:
   board states. Though, we recommended making a copy of the map to preserve 
   the actual current map state.
 """
+# rating might be rng, but got up to mid 2300s
 
 class AlgoStrategy(gamelib.AlgoCore):
     def __init__(self):
