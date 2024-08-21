@@ -59,6 +59,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.just_attacked = False
         self.after_attacked_game_state = None
         self.before_attack_game_state = None
+        
+        """False is Left, True is Right"""
+        self.prev_attack_side = False 
         # gamelib.debug_write(str(self.sectors))
         
 
@@ -106,6 +109,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             should_attack, location, num_scouts = self.should_attack(game_state)
             if should_attack:
                 self.scout_attack(game_state, location, num_scouts)
+                self.prev_attack_side = location[0]<=13
                 self.before_attack_game_state = copy.deepcopy(game_state)
                 self.just_attacked = True
         
@@ -470,9 +474,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         location_options = []
         # game_state.get_target(attacking_unit)
         for i in range(14):
-            if game_state.can_spawn(SCOUT, [i,13-i]):
+            if game_state.can_spawn(SCOUT, [i,13-i]) and self.prev_attack_side == True:
                 location_options.append([i,13-i])
-            if game_state.can_spawn(SCOUT, [14+i,i]):
+            if game_state.can_spawn(SCOUT, [14+i,i]) and self.prev_attack_side == False:
                 location_options.append([14+i,i])
                 
         
@@ -503,6 +507,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             for empty_location in empty_turret_locations:
                 temp_state.attempt_spawn(TURRET,empty_location)
                 temp_state.attempt_upgrade(empty_location)
+                gamelib.debug_write(empty_location)
             
             while path_index < len(path):
                 path_location = path[path_index]
