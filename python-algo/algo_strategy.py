@@ -99,11 +99,12 @@ class AlgoStrategy(gamelib.AlgoCore):
             if should_attack:
                 self.scout_attack(game_state, location, num_scouts)
         
-        did_improve = True
-        while (did_improve and game_state.get_resource(0) >= 2):
-            defense = self.parse_defenses(game_state)
-            sector_to_upgrade = self.defense_heuristic(defense)
-            did_improve = self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
+        if self.should_defend(game_state):
+            did_improve = True
+            while (did_improve and game_state.get_resource(0) >= 2):
+                defense = self.parse_defenses(game_state)
+                sector_to_upgrade = self.defense_heuristic(defense)
+                did_improve = self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
             
         
     def initial_defense(self, game_state):
@@ -357,6 +358,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         if game_state.turn_number > 0:
             self.scout_attack_with_support(game_state)
                 
+    def should_defend(self, game_state):
+        enemy_mobile_points = game_state.get_resource(MP,1)
+        return enemy_mobile_points >= 8
 
     def build_defences(self, game_state):
         """
