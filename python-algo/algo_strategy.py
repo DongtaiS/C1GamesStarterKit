@@ -25,13 +25,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         super().__init__()
         seed = random.randrange(maxsize)
         random.seed(seed)
-        gamelib.debug_write('Random seed: {}'.format(seed))
 
     def on_game_start(self, config):
         """ 
         Read in config and perform any initial setup here 
         """
-        gamelib.debug_write('Configuring your custom algo strategy...')
         self.config = config
         global WALL, SUPPORT, TURRET, SCOUT, DEMOLISHER, INTERCEPTOR, MP, SP
         WALL = config["unitInformation"][0]["shorthand"]
@@ -80,7 +78,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         game engine.
         """
         game_state = gamelib.GameState(self.config, turn_state)
-        gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
+        # gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
 
         self.main_strategy(game_state)
@@ -134,7 +132,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         else:
             start_point = self.start_points[4]
     
-        gamelib.debug_write("SECTOR TO UPGRADE: " + str(sector) + " " + str(start_point))        
+        # gamelib.debug_write("SECTOR TO UPGRADE: " + str(sector) + " " + str(start_point))        
         
         loc_seq = self.upgrade_sequence(start_point)
           
@@ -438,8 +436,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         path_dmg = sorted(path_dmg, key = lambda x: x[0], reverse=True)
         
         
-        for thing in path_dmg:
-            gamelib.debug_write(f"location: {thing[4]} surviving: {thing[0]} damage to turret: {thing[2]}")
+        # for thing in path_dmg:
+        #     gamelib.debug_write(f"location: {thing[4]} surviving: {thing[0]} damage to turret: {thing[2]}")
         
         return (path_dmg[0][5],path_dmg[0][0])
         import random
@@ -503,9 +501,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         DELTA: float = 2
         mobile_points = game_state.get_resource(MP)
         num_scouts = int(mobile_points)
-        scout_location,scouts_alive = self.full_sim(game_state, num_scouts)
-        gamelib.debug_write("BEST LOCATION: " + str(scout_location) + "NUM SURVIVE: " + str(scouts_alive) + " MP : " + str(mobile_points))
-        
+        scout_location,scouts_alive = self.full_sim(game_state, num_scouts)        
         
         if game_state.enemy_health <= 7 and game_state.enemy_health - scouts_alive < -2:
             return True, scout_location,num_scouts
@@ -547,19 +543,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         Processing the action frames is complicated so we only suggest it if you have time and experience.
         Full doc on format of a game frame at in json-docs.html in the root of the Starterkit.
         """
-        # Let's record at what position we get scored on
-        state = json.loads(turn_string)
-        events = state["events"]
-        breaches = events["breach"]
-        for breach in breaches:
-            location = breach[0]
-            unit_owner_self = True if breach[4] == 1 else False
-            # When parsing the frame data directly, 
-            # 1 is integer for yourself, 2 is opponent (StarterKit code uses 0, 1 as player_index instead)
-            if not unit_owner_self:
-                gamelib.debug_write("Got scored on at: {}".format(location))
-                self.scored_on_locations.append(location)
-                gamelib.debug_write("All locations: {}".format(self.scored_on_locations))
 
 
 if __name__ == "__main__":
