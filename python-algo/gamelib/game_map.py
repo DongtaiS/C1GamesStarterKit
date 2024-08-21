@@ -246,6 +246,48 @@ class GameMap:
                     locations.append(new_location)
         return locations
 
+    def get_locations_in_range_mod(self, location, radius):
+        """Gets locations in a circular area around a location
+
+        Args:
+            location: The center of our search area
+            radius: The radius of our search area
+
+        Returns:
+            The locations that are within our search area
+
+        """
+        if radius < 0 or radius > self.ARENA_SIZE:
+            self.warn("Radius {} was passed to get_locations_in_range. Expected integer between 0 and {}".format(radius, self.ARENA_SIZE))
+        if not self.in_arena_bounds(location):
+            self._invalid_coordinates(location)
+
+        x, y = location
+        locations = [[x,y]]
+        search_radius = math.ceil(radius)
+        getHitRadius = self.config["unitInformation"][0]['getHitRadius']
+        for r in range(1, int(search_radius)+2):    
+            for i in range(r):
+                xinc = i
+                yinc = r-i
+                new_location = [x + xinc, y + yinc]
+                # A unit with a given range affects all locations whose centers are within that range + get hit radius
+                if self.in_arena_bounds(new_location) and self.distance_between_locations(location, new_location) < radius + getHitRadius:
+                    locations.append(new_location)
+                new_location = [x - xinc, y + yinc]
+                # A unit with a given range affects all locations whose centers are within that range + get hit radius
+                if self.in_arena_bounds(new_location) and self.distance_between_locations(location, new_location) < radius + getHitRadius:
+                    locations.append(new_location)
+                new_location = [x + xinc, y - yinc]
+                # A unit with a given range affects all locations whose centers are within that range + get hit radius
+                if self.in_arena_bounds(new_location) and self.distance_between_locations(location, new_location) < radius + getHitRadius:
+                    locations.append(new_location)
+                new_location = [x - xinc, y - yinc]
+                # A unit with a given range affects all locations whose centers are within that range + get hit radius
+                if self.in_arena_bounds(new_location) and self.distance_between_locations(location, new_location) < radius + getHitRadius:
+                    locations.append(new_location)
+        return locations
+
     def distance_between_locations(self, location_1, location_2):
         """Euclidean distance
 
