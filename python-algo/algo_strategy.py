@@ -99,12 +99,12 @@ class AlgoStrategy(gamelib.AlgoCore):
             if should_attack:
                 self.scout_attack(game_state, location, num_scouts)
         
-        if self.should_defend(game_state):
-            did_improve = True
-            while (did_improve and game_state.get_resource(0) >= 2):
-                defense = self.parse_defenses(game_state)
-                sector_to_upgrade = self.defense_heuristic(defense)
-                did_improve = self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
+        # if self.should_defend(game_state):
+        did_improve = True
+        while (did_improve and game_state.get_resource(0) >= 2):
+            defense = self.parse_defenses(game_state)
+            sector_to_upgrade = self.defense_heuristic(defense)
+            did_improve = self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
             
         
     def initial_defense(self, game_state):
@@ -196,31 +196,23 @@ class AlgoStrategy(gamelib.AlgoCore):
         return False
         
     def try_build_upgraded_turret(self, game_state, turret_seq):
-        # with >= 8 SP, try to build as many upgraded turrets as possible
-        did_build = False
         if game_state.get_resource(0) >= 8:
             for i in range(len(turret_seq)):
                 loc = turret_seq[i]
                 if not game_state.contains_stationary_unit(loc):
                     game_state.attempt_spawn(TURRET, loc)
                     game_state.attempt_upgrade(loc)
-                    did_build = True
-                    if game_state.get_resource(0) < 8:
-                        break
-        return did_build
+                    return True
+        return False
     
     def try_build_turret(self, game_state, turret_seq): 
-        # with >= 3 SP try to build unupgraded turret
-        did_build = False
         if game_state.get_resource(0) >= 3:
             for i in range(len(turret_seq)):
                 loc = turret_seq[i]
                 if not game_state.contains_stationary_unit(loc):
                     game_state.attempt_spawn(TURRET, loc)
-                    did_build = True
-                    if game_state.get_resource(0) < 4:
-                        break
-        return did_build
+                    return True
+        return False
         
     def try_upgrade(self, game_state: gamelib.GameState, location):
         if game_state.contains_stationary_unit(location):
@@ -247,7 +239,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         else:
             right = right - 1
         for i in range(1, 7):
-            inc = i if start < 14 else -i
+            inc = -i if start < 14 else i
             if (start + inc < right and start + inc >= left):
                 res.append(start + inc)
             if (start - inc >= left and start - inc < right):
@@ -654,14 +646,16 @@ class AlgoStrategy(gamelib.AlgoCore):
         scout_location,scouts_alive = self.full_sim(game_state, num_scouts)
         gamelib.debug_write("BEST LOCATION: " + str(scout_location) + "NUM SURVIVE: " + str(scouts_alive) + " MP : " + str(mobile_points))
         
-        if mobile_points < 20 and (scouts_alive <= num_scouts * 0.8 or mobile_points < 8):
+        if mobile_points < 20 and (scouts_alive <= num_scouts * 0.7 or mobile_points < 8):
+            return False, [], 0
+        if game_state.enemy_health <= 7 and game_state.enemy_health - scouts_alive > -2:
             return False, [], 0
         
         return True, scout_location, num_scouts
         
     def scout_attack(self, game_state, scout_location, num_scouts):
         game_state.attempt_spawn(SCOUT,scout_location,num_scouts)
-        support_locations = game_state.game_map.get_locations_in_range(scout_location,3.5)        
+        support_locations = game_state.game_map.get_locations_in_range(scout_location,2)        
         for location in support_locations:
             if self.buy_sell_support(game_state,location):
                 break
