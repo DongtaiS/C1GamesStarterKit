@@ -5,7 +5,8 @@ import warnings
 import copy
 from sys import maxsize
 import json
-from gamelib import GameMap, GameState
+from gamelib import GameMap, GameState, GameUnit
+from collections import deque
 
 """
 Most of the algo code you write will be in this file unless you create new
@@ -53,7 +54,11 @@ class AlgoStrategy(gamelib.AlgoCore):
                 self.sectors[c // 7].append([c,r])
         
         self.start_points = [[4,12], [10,12], [17,12], [23,12]]
-        
+        self.opponent_attacks = deque([8])
+        self.prev_opponent_mp = 5
+        self.just_attacked = False
+        self.after_attacked_game_state = None
+        self.before_attack_game_state = None
         # gamelib.debug_write(str(self.sectors))
         
 
@@ -93,19 +98,28 @@ class AlgoStrategy(gamelib.AlgoCore):
         if game_state.turn_number == 0:
             self.initial_defense(game_state)
             
+        if self.just_attacked:
+            self.after_attacked_game_state = copy.deepcopy(game_state)
+            self.just_attacked = False
             
         if game_state.turn_number > 0:
             should_attack, location, num_scouts = self.should_attack(game_state)
             if should_attack:
                 self.scout_attack(game_state, location, num_scouts)
+                self.before_attack_game_state = copy.deepcopy(game_state)
+                self.just_attacked = True
         
-        # if self.should_defend(game_state):
-        did_improve = True
-        while (did_improve and game_state.get_resource(0) >= 2):
-            defense = self.parse_defenses(game_state)
-            sector_to_upgrade = self.defense_heuristic(defense)
-            did_improve = self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
-            
+        if self.should_defend(game_state):
+            did_improve = True
+            while (did_improve and game_state.get_resource(0) >= 2):
+                defense = self.parse_defenses(game_state)
+                sector_to_upgrade = self.defense_heuristic(defense)
+                did_improve = self.improve_defense(game_state, sector_to_upgrade, defense[sector_to_upgrade])
+        
+        opponent_delta_mp = game_state.get_resource(MP,1) - self.prev_opponent_mp
+        if opponent_delta_mp < 0:
+            self.opponent_attacks.append(-opponent_delta_mp)
+        self.prev_opponent_mp = game_state.get_resource(MP,1)
         
     def initial_defense(self, game_state):
         #TODO: do testing to optimize these placements, play around with putting extra turrets in front or upgraded walls
@@ -335,54 +349,16 @@ class AlgoStrategy(gamelib.AlgoCore):
                 res = i
         
         return res
-
-    def starter_strategy(self, game_state):
-        """
-        For defense we will use a spread out layout and some interceptors early on.
-        We will place turrets near locations the opponent managed to score on.
-        For offense we will use long range demolishers if they place stationary units near the enemy's front.
-        If there are no stationary units to attack in the front, we will send Scouts to try and score quickly.
-        """
-        # First, place basic defenses
-        # self.build_defences(game_state)
-        # Now build reactive defenses based on where the enemy scored
-        # self.build_reactive_defense(game_state)
-        if game_state.turn_number > 0:
-            self.scout_attack_with_support(game_state)
                 
+    def opponent_attack_mp_heuristic(self):
+        while len(self.opponent_attacks) > 3:
+            self.opponent_attacks.popleft()
+        attack_avg_mp = min(self.opponent_attacks)
+        return int(attack_avg_mp)
+    
     def should_defend(self, game_state):
         enemy_mobile_points = game_state.get_resource(MP,1)
-        return enemy_mobile_points >= 8
-
-    def build_defences(self, game_state):
-        """
-        Build basic defenses using hardcoded locations.
-        Remember to defend corners and avoid placing units in the front where enemy demolishers can attack them.
-        """
-        # Useful tool for setting up your base locations: https://www.kevinbai.design/terminal-map-maker
-        # More community tools available at: https://terminal.c1games.com/rules#Download
-
-        # Place turrets that attack enemy units
-        turret_locations = [[0, 13], [27, 13], [8, 11], [19, 11], [13, 11], [14, 11]]
-        # attempt_spawn will try to spawn units if we have resources, and will check if a blocking unit is already there
-        game_state.attempt_spawn(TURRET, turret_locations)
-        
-        # Place walls in front of turrets to soak up damage for them
-        wall_locations = [[8, 12], [19, 12]]
-        game_state.attempt_spawn(WALL, wall_locations)
-        # upgrade walls so they soak more damage
-        game_state.attempt_upgrade(wall_locations)
-
-    def build_reactive_defense(self, game_state):
-        """
-        This function builds reactive defenses based on where the enemy scored on us from.
-        We can track where the opponent scored by looking at events in action frames 
-        as shown in the on_action_frame function
-        """
-        for location in self.scored_on_locations:
-            # Build turret one space above so that it doesn't block our own edge spawn locations
-            build_location = [location[0], location[1]+1]
-            game_state.attempt_spawn(TURRET, build_location)
+        return enemy_mobile_points >= self.opponent_attack_mp_heuristic()
 
     def stall_with_interceptors(self, game_state):
         """
@@ -460,6 +436,9 @@ class AlgoStrategy(gamelib.AlgoCore):
 
 
     def full_sim(self, game_state : gamelib.GameState, num_scouts:int):
+        # make a change to store the cell at row 15, when we pass by in location
+        # then store this in hyper parameter, to see if our opponents reinforce that spot or not
+        
         # Returns the location, and also the number of simulated scouts that make it through
         # 0 stores num surviving scouts,
         # 1 stores turret damage to scout, 
@@ -468,6 +447,24 @@ class AlgoStrategy(gamelib.AlgoCore):
         # 4 stores scout damage to supports 
         # 5 stores the starting location
         # 6 stores set of all attackers along this path
+        
+        empty_turret_locations = []
+        
+        before_attack_game_state = self.before_attack_game_state
+        after_attacked_game_state = self.after_attacked_game_state
+        if after_attacked_game_state is not None and game_state.get_resource(SP,1)>=8:
+            for i in range(0,28):
+                for j in range(14, 28):
+                    before_unit = before_attack_game_state.contains_stationary_unit([i,j])
+                    after_unit = after_attacked_game_state.contains_stationary_unit([i,j])
+                    cur_unit = game_state.contains_stationary_unit([i,j])
+                    if after_unit is False and before_unit and before_unit.unit_type == TURRET and before_unit.upgraded:
+                        # this location has a dead upgraded turret
+                        if cur_unit is False or cur_unit.unit_type == TURRET and not cur_unit.upgraded:
+                            # check that the spot currently has no turret, or a default turret
+                            empty_turret_locations.append([i,j])
+
+        
         path_dmg: list[tuple[int,int,list[int]]]= []
         
         location_options = []
@@ -502,6 +499,10 @@ class AlgoStrategy(gamelib.AlgoCore):
             edge_locs = []
             for i in range(4):
                 edge_locs.append(game_state.game_map.get_edge_locations(i))
+            
+            for empty_location in empty_turret_locations:
+                temp_state.attempt_spawn(TURRET,empty_location)
+                temp_state.attempt_upgrade(empty_location)
             
             while path_index < len(path):
                 path_location = path[path_index]
@@ -699,5 +700,6 @@ class AlgoStrategy(gamelib.AlgoCore):
 
 
 if __name__ == "__main__":
+    
     algo = AlgoStrategy()
     algo.start()
