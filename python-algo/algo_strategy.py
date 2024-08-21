@@ -146,7 +146,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         for i in range(len(loc_seq)):
             if self.try_upgrade(game_state, loc_seq[i]):
                 return True                
-        if self.try_build_upgraded_turret(game_state, turret_seq): #also tries to upgrade turrets
+        if self.try_build_upgraded_turret(game_state, turret_seq): #also tries to build upgraded turrets
             return True
         
         if self.try_build_turret(game_state, turret_seq):
@@ -194,14 +194,14 @@ class AlgoStrategy(gamelib.AlgoCore):
     def column_sequence(self, start):
         res = [start]
         if start<=9:
-            left = 1
-            right = 9
+            left = 2
+            right = 7
         elif start <= 16:
-            left = 10
+            left = 11
             right = 16
         else:
-            left =17
-            right = 26
+            left = 20
+            right = 25
             
         for i in range(1, 7):
             inc = i if start <=9 else i #prioritizing build towards center
@@ -259,8 +259,6 @@ class AlgoStrategy(gamelib.AlgoCore):
                     unit: gamelib.GameUnit = game_state.contains_stationary_unit(self.sectors[i][j])
                     weight = unit.health / unit.max_health
                             
-                    #skip support when parsing our own defense, it doesn't really matter
-                    
                     if unit.unit_type == TURRET:
                         if unit.upgraded:
                             num_turretPlus += 1
@@ -293,52 +291,6 @@ class AlgoStrategy(gamelib.AlgoCore):
     def should_defend(self, game_state):
         enemy_mobile_points = game_state.get_resource(MP,1)
         return enemy_mobile_points >= 8
-
-
-    def stall_with_interceptors(self, game_state):
-        """
-        Send out interceptors at random locations to defend our base from enemy moving units.
-        """
-        # We can spawn moving units on our edges so a list of all our edge locations
-        friendly_edges = game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_LEFT) + game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_RIGHT)
-        
-        # Remove locations that are blocked by our own structures 
-        # since we can't deploy units there.
-        deploy_locations = self.filter_blocked_locations(friendly_edges, game_state)
-        
-        # While we have remaining MP to spend lets send out interceptors randomly.
-        while game_state.get_resource(MP) >= game_state.type_cost(INTERCEPTOR)[MP] and len(deploy_locations) > 0:
-            # Choose a random deploy location.
-            deploy_index = random.randint(0, len(deploy_locations) - 1)
-            deploy_location = deploy_locations[deploy_index]
-            
-            game_state.attempt_spawn(INTERCEPTOR, deploy_location)
-            """
-            We don't have to remove the location since multiple mobile 
-            units can occupy the same space.
-            """
-
-    def demolisher_line_strategy(self, game_state):
-        """
-        Build a line of the cheapest stationary unit so our demolisher can attack from long range.
-        """
-        # First let's figure out the cheapest unit
-        # We could just check the game rules, but this demonstrates how to use the GameUnit class
-        stationary_units = [WALL, TURRET, SUPPORT]
-        cheapest_unit = WALL
-        for unit in stationary_units:
-            unit_class = gamelib.GameUnit(unit, game_state.config)
-            if unit_class.cost[game_state.MP] < gamelib.GameUnit(cheapest_unit, game_state.config).cost[game_state.MP]:
-                cheapest_unit = unit
-
-        # Now let's build out a line of stationary units. This will prevent our demolisher from running into the enemy base.
-        # Instead they will stay at the perfect distance to attack the front two rows of the enemy base.
-        for x in range(27, 5, -1):
-            game_state.attempt_spawn(cheapest_unit, [x, 11])
-
-        # Now spawn demolishers next to the line
-        # By asking attempt_spawn to spawn 1000 units, it will essentially spawn as many as we have resources for
-        game_state.attempt_spawn(DEMOLISHER, [24, 10], 1000)
 
     def least_damage_spawn_location(self, game_state):
         """
@@ -538,10 +490,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         import random
         index = random.randrange(0,min(len(path_dmg),2)) # 0 or random
         return (path_dmg[index][2],path_dmg[index][3])
-
-    def attack_this_round_mp(self, game_state) -> bool:
-        DELTA: float = 2
-        return game_state.project_future_MP() - game_state.get_resource(MP) < DELTA
             
     def buy_sell_support(self, game_state, location) -> bool:
         "Checks to see if we can spawn a support for an attack"
