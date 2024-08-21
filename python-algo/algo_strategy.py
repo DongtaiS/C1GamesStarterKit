@@ -83,8 +83,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
 
-        # self.starter_strategy(game_state)
-
         self.main_strategy(game_state)
 
         game_state.submit_turn()
@@ -260,14 +258,6 @@ class AlgoStrategy(gamelib.AlgoCore):
                 if game_state.contains_stationary_unit(self.sectors[i][j]):
                     unit: gamelib.GameUnit = game_state.contains_stationary_unit(self.sectors[i][j])
                     weight = unit.health / unit.max_health
-                    
-                    if unit.unit_type == WALL:
-                        if unit.upgraded:
-                            num_wallPlus += 1
-                            weight_wallPlus += weight
-                        else:
-                            num_wall += weight
-                            weight_wall += weight
                             
                     #skip support when parsing our own defense, it doesn't really matter
                     
@@ -279,8 +269,8 @@ class AlgoStrategy(gamelib.AlgoCore):
                             num_turret += 1
                             weight_turret += weight
             
-            results[i].append([weight_wall, weight_wallPlus, weight_turret, weight_turretPlus])
-            results[i].append([num_wall, num_wallPlus, num_turret, num_turretPlus])
+            results[i].append([0, 0, weight_turret, weight_turretPlus])
+            results[i].append([0, 0, num_turret, num_turretPlus])
             
         return results
                 
@@ -291,7 +281,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             #TODO: make a better heuristic, this weighs turret+ at 14 "points", turret- at 6, wall+ at 3, wall- at 1
             # then we select the sector that has the lowest # of points
             value = defenses[i][0][3] * 14 + defenses[i][0][2] * 6 + defenses[i][0][1] * 3 + defenses[i][0][0]
-            if i == 0 or i == 3:
+            if i == 0 or i == 2:
                 value *= 0.8
             if value < minVal:
                 minVal = value
@@ -299,19 +289,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         
         return res
 
-    def starter_strategy(self, game_state):
-        """
-        For defense we will use a spread out layout and some interceptors early on.
-        We will place turrets near locations the opponent managed to score on.
-        For offense we will use long range demolishers if they place stationary units near the enemy's front.
-        If there are no stationary units to attack in the front, we will send Scouts to try and score quickly.
-        """
-        # First, place basic defenses
-        # self.build_defences(game_state)
-        # Now build reactive defenses based on where the enemy scored
-        # self.build_reactive_defense(game_state)
-        if game_state.turn_number > 0:
-            self.scout_attack_with_support(game_state)
                 
     def should_defend(self, game_state):
         enemy_mobile_points = game_state.get_resource(MP,1)
@@ -415,7 +392,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         
         TEMP_SCOUT  = gamelib.GameUnit(SCOUT, game_state.config)
         SCOUT_DAMAGE = TEMP_SCOUT.damage_f
-        SCOUT_HP = TEMP_SCOUT.max_health
+        SCOUT_HP = TEMP_SCOUT.max_health + 3 # +3 for support
         
         for location in location_options:
             temp_state :gamelib.GameState = copy.deepcopy(game_state)
@@ -581,12 +558,14 @@ class AlgoStrategy(gamelib.AlgoCore):
         scout_location,scouts_alive = self.full_sim(game_state, num_scouts)
         gamelib.debug_write("BEST LOCATION: " + str(scout_location) + "NUM SURVIVE: " + str(scouts_alive) + " MP : " + str(mobile_points))
         
-        if mobile_points < 20 and (scouts_alive <= num_scouts * 0.7 or mobile_points < 8):
-            return False, [], 0
-        if game_state.enemy_health <= 7 and game_state.enemy_health - scouts_alive > -2:
-            return False, [], 0
         
-        return True, scout_location, num_scouts
+        if game_state.enemy_health <= 7 and game_state.enemy_health - scouts_alive < -2:
+            return True, scout_location,num_scouts
+        
+        if mobile_points >= 15 + game_state.turn_number // 10 or scouts_alive >= num_scouts * 0.6:
+            return True, scout_location, num_scouts
+        
+        return False, [], 0
         
     def scout_attack(self, game_state, scout_location, num_scouts):
         game_state.attempt_spawn(SCOUT,scout_location,num_scouts)
