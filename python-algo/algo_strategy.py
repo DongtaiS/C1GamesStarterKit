@@ -325,6 +325,8 @@ class AlgoStrategy(gamelib.AlgoCore):
             #TODO: make a better heuristic, this weighs turret+ at 14 "points", turret- at 6, wall+ at 3, wall- at 1
             # then we select the sector that has the lowest # of points
             value = defenses[i][0][3] * 14 + defenses[i][0][2] * 6 + defenses[i][0][1] * 3 + defenses[i][0][0]
+            if defenses[i][0][1] < 1:
+                value *= 0.5
             if i == 0 or i == 3:
                 value *= 0.75
             if value < minVal:
@@ -640,9 +642,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         scout_location,scouts_alive = self.full_sim(game_state, num_scouts)
         # gamelib.debug_write("BEST LOCATION: " + str(scout_location) + "NUM SURVIVE: " + str(scouts_alive) + " MP : " + str(mobile_points))
         
-        if mobile_points >= 8 and game_state.enemy_health <= 7 and game_state.enemy_health - scouts_alive < -2:
+        if mobile_points >= 8 and game_state.enemy_health <= 7 and game_state.enemy_health - scouts_alive < -3:
             return True, scout_location, num_scouts
-        if mobile_points < 20 and (scouts_alive <= num_scouts * 0.7 or mobile_points < 8):
+        if mobile_points < 15 + game_state.turn_number // 10 and (scouts_alive <= num_scouts * 0.6 or mobile_points < 8):
             return False, [], 0
         
         return True, scout_location, num_scouts
