@@ -60,7 +60,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.after_attacked_game_state = None
         self.before_attack_game_state = None
         
-        """False is Left, True is Right"""
+        """<=13 is True"""
         self.prev_attack_side = False 
         # gamelib.debug_write(str(self.sectors))
         
@@ -106,8 +106,8 @@ class AlgoStrategy(gamelib.AlgoCore):
             self.just_attacked = False
             
         if game_state.turn_number > 0:
-            should_attack, location, num_scouts = self.should_attack(game_state)
-            if should_attack:
+            attack, location, num_scouts = self.should_attack(game_state)
+            if attack:
                 self.scout_attack(game_state, location, num_scouts)
                 self.prev_attack_side = location[0]<=13
                 self.before_attack_game_state = copy.deepcopy(game_state)
@@ -345,7 +345,12 @@ class AlgoStrategy(gamelib.AlgoCore):
         for i in range(4):
             #TODO: make a better heuristic, this weighs turret+ at 14 "points", turret- at 6, wall+ at 3, wall- at 1
             # then we select the sector that has the lowest # of points
-            value = defenses[i][0][3] * 14 + defenses[i][0][2] * 6 + defenses[i][0][1] * 3 + defenses[i][0][0]
+            # 3 is turret +, 2 is turret-, 1 is wall+, 0 is wall-
+            value = defenses[i][0][3] * 14 + defenses[i][0][2] * 3
+            if defenses[i][0][3] > 0:
+                value += defenses[i][0][1] * 6 + defenses[i][0][0]*2
+            elif defenses[i][0][2] > 0:
+                value += defenses[i][0][1] * 2 + defenses[i][0][0]
             if i == 0 or i == 3:
                 value *= 0.75
             if value < minVal:
@@ -362,52 +367,7 @@ class AlgoStrategy(gamelib.AlgoCore):
     
     def should_defend(self, game_state):
         enemy_mobile_points = game_state.get_resource(MP,1)
-        return enemy_mobile_points >= self.opponent_attack_mp_heuristic()
-
-    def stall_with_interceptors(self, game_state):
-        """
-        Send out interceptors at random locations to defend our base from enemy moving units.
-        """
-        # We can spawn moving units on our edges so a list of all our edge locations
-        friendly_edges = game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_LEFT) + game_state.game_map.get_edge_locations(game_state.game_map.BOTTOM_RIGHT)
-        
-        # Remove locations that are blocked by our own structures 
-        # since we can't deploy units there.
-        deploy_locations = self.filter_blocked_locations(friendly_edges, game_state)
-        
-        # While we have remaining MP to spend lets send out interceptors randomly.
-        while game_state.get_resource(MP) >= game_state.type_cost(INTERCEPTOR)[MP] and len(deploy_locations) > 0:
-            # Choose a random deploy location.
-            deploy_index = random.randint(0, len(deploy_locations) - 1)
-            deploy_location = deploy_locations[deploy_index]
-            
-            game_state.attempt_spawn(INTERCEPTOR, deploy_location)
-            """
-            We don't have to remove the location since multiple mobile 
-            units can occupy the same space.
-            """
-
-    def demolisher_line_strategy(self, game_state):
-        """
-        Build a line of the cheapest stationary unit so our demolisher can attack from long range.
-        """
-        # First let's figure out the cheapest unit
-        # We could just check the game rules, but this demonstrates how to use the GameUnit class
-        stationary_units = [WALL, TURRET, SUPPORT]
-        cheapest_unit = WALL
-        for unit in stationary_units:
-            unit_class = gamelib.GameUnit(unit, game_state.config)
-            if unit_class.cost[game_state.MP] < gamelib.GameUnit(cheapest_unit, game_state.config).cost[game_state.MP]:
-                cheapest_unit = unit
-
-        # Now let's build out a line of stationary units. This will prevent our demolisher from running into the enemy base.
-        # Instead they will stay at the perfect distance to attack the front two rows of the enemy base.
-        for x in range(27, 5, -1):
-            game_state.attempt_spawn(cheapest_unit, [x, 11])
-
-        # Now spawn demolishers next to the line
-        # By asking attempt_spawn to spawn 1000 units, it will essentially spawn as many as we have resources for
-        game_state.attempt_spawn(DEMOLISHER, [24, 10], 1000)
+        return enemy_mobile_points >= 8
 
     def least_damage_spawn_location(self, game_state):
         """
@@ -453,7 +413,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         # 6 stores set of all attackers along this path
         
         empty_turret_locations = []
-        
         before_attack_game_state = self.before_attack_game_state
         after_attacked_game_state = self.after_attacked_game_state
         if after_attacked_game_state is not None and game_state.get_resource(SP,1)>=8:
@@ -462,6 +421,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                     before_unit = before_attack_game_state.contains_stationary_unit([i,j])
                     after_unit = after_attacked_game_state.contains_stationary_unit([i,j])
                     cur_unit = game_state.contains_stationary_unit([i,j])
+                    
                     if after_unit is False and before_unit and before_unit.unit_type == TURRET and before_unit.upgraded:
                         # this location has a dead upgraded turret
                         if cur_unit is False or cur_unit.unit_type == TURRET and not cur_unit.upgraded:
@@ -474,11 +434,10 @@ class AlgoStrategy(gamelib.AlgoCore):
         location_options = []
         # game_state.get_target(attacking_unit)
         for i in range(14):
-            if game_state.can_spawn(SCOUT, [i,13-i]) and self.prev_attack_side == True:
+            if game_state.can_spawn(SCOUT, [i,13-i]):
                 location_options.append([i,13-i])
-            if game_state.can_spawn(SCOUT, [14+i,i]) and self.prev_attack_side == False:
+            if game_state.can_spawn(SCOUT, [14+i,i]):
                 location_options.append([14+i,i])
-                
         
         TEMP_SCOUT  = gamelib.GameUnit(SCOUT, game_state.config)
         SCOUT_DAMAGE = TEMP_SCOUT.damage_f
@@ -507,7 +466,6 @@ class AlgoStrategy(gamelib.AlgoCore):
             for empty_location in empty_turret_locations:
                 temp_state.attempt_spawn(TURRET,empty_location)
                 temp_state.attempt_upgrade(empty_location)
-                gamelib.debug_write(empty_location)
             
             while path_index < len(path):
                 path_location = path[path_index]
@@ -646,11 +604,13 @@ class AlgoStrategy(gamelib.AlgoCore):
         return False
 
     def should_attack(self, game_state: GameState):
-        DELTA: float = 2
         mobile_points = game_state.get_resource(MP)
         num_scouts = int(mobile_points)
         scout_location,scouts_alive = self.full_sim(game_state, num_scouts)
         gamelib.debug_write("BEST LOCATION: " + str(scout_location) + "NUM SURVIVE: " + str(scouts_alive) + " MP : " + str(mobile_points))
+        
+        if game_state.turn_number == 2:
+            return True, scout_location, num_scouts
         
         if mobile_points < 20 and (scouts_alive <= num_scouts * 0.7 or mobile_points < 8):
             return False, [], 0
