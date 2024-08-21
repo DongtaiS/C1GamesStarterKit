@@ -192,14 +192,14 @@ class AlgoStrategy(gamelib.AlgoCore):
     def column_sequence(self, start):
         res = [start]
         if start<=9:
-            left = 2
-            right = 7
+            left = 3
+            right = 6
         elif start <= 16:
             left = 11
             right = 16
         else:
-            left = 20
-            right = 25
+            left = 21
+            right = 24
             
         for i in range(1, 7):
             inc = i if start <=9 else i #prioritizing build towards center
@@ -506,7 +506,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         if game_state.enemy_health <= 7 and game_state.enemy_health - scouts_alive < -2:
             return True, scout_location,num_scouts
         
-        if mobile_points >= 15 + game_state.turn_number // 10 or (scouts_alive >= num_scouts * 0.6 and mobile_points >= 8):
+        if mobile_points >= 15 + game_state.turn_number // 10 or (scouts_alive >= num_scouts * 0.6):
             return True, scout_location, num_scouts
         
         return False, [], 0
