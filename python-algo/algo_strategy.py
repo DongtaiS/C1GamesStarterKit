@@ -112,7 +112,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.attempt_spawn(TURRET, self.start_points)
         game_state.attempt_upgrade(self.start_points)
         
-        wall_locations = [[3,13], [10,13], [17,13], [24,13]]
+        wall_locations = [[4,13], [10,13], [17,13], [23,13]]
         
         game_state.attempt_spawn(WALL, wall_locations)
     
